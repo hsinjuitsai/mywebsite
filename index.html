@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>sense beyond</title>
+<link href="https://fonts.googleapis.com/css2?family=Alkatra:wght@400..700&family=Fraunces:wght@900&family=Inter:wght@400&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-code: 'VT323', monospace;
+  --bg: #000000;
+  --ink: #ffffff;
+  --mid: #555555;
+  --accent: #F5DF4D;
+  --code-color: #E6FF00;
+}
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; scrollbar-width: none; -ms-overflow-style: none; }
+html::-webkit-scrollbar { display: none; }
+
+/* 防反白設定 */
+body { 
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); overflow-x: hidden; 
+  -webkit-font-smoothing: antialiased; cursor: none; 
+  -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; user-select: none; 
+}
+::selection { background: transparent; }
+::-moz-selection { background: transparent; }
+
+#cur { position: fixed; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); transition: opacity 0.5s; }
+#cur-ring { position: fixed; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--ink); opacity: .15; pointer-events: none; z-index: 9998; transform: translate(-50%,-50%); transition: opacity 0.5s; }
+
+/* 影片背景 */
+#bg-video {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  object-fit: cover; z-index: 0; opacity: 0; transition: opacity 2s ease;
+}
+
+#hero { 
+  background: var(--bg); padding: 0; width: 100vw; height: 100vh; position: relative; 
+  display: flex; flex-direction: column; justify-content: center; align-items: center; 
+  z-index: 10; transition: background-color 1.5s ease;
+}
+#hero.transparent-bg { background-color: transparent; }
+
+.hero-heading { width: 100%; display: flex; flex-direction: column; align-items: center; margin-bottom: 20px; transition: all 0.6s ease; }
+.hero-heading .ktext-line:nth-child(1) { text-align: center; font-size: clamp(80px, 18vw, 320px); }
+.hero-heading .ktext-line:nth-child(2) { text-align: center; margin-top: -3vw; font-size: clamp(70px, 16vw, 240px); }
+
+.ktext-line { display: block; font-family: var(--font-display); text-transform: uppercase; line-height: 0.95; white-space: nowrap; }
+.kchar { display: inline-block; will-change: transform; font-weight: 900; letter-spacing: -0.1em; position: relative; color: var(--ink); transition: color 0.3s ease; user-select: none; opacity: 0;}
+.ktext-line .kchar:last-child { letter-spacing: normal; padding-right: 0.05em; }
+
+.kchar.is-lit {
+  color: transparent; background-color: var(--ink); -webkit-background-clip: text; background-clip: text;
+  background-image:
+    radial-gradient(circle at calc(var(--lx)*1px) calc(var(--ly)*1px), transparent 20px, rgba(255,255,255,1) 95px),
+    conic-gradient(from calc(var(--angle)*1deg) at calc(var(--lx)*1px) calc(var(--ly)*1px), transparent 0deg, var(--accent) 10deg, var(--accent) 45deg, transparent 55deg);
+}
+
+#intro-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 100; }
+
+.typewriter-container {
+  font-family: var(--font-code); font-size: 22px; text-transform: uppercase; letter-spacing: 0.15em;
+  min-height: 5em; opacity: 0; transition: all 0.6s ease; display: flex; flex-direction: column; align-items: center; gap: 15px; padding-bottom: 10px;
+}
+.typewriter-container.show { opacity: 1; }
+.typewriter-line {
+  line-height: 1.2; padding: 5px 0;
+  background: repeating-linear-gradient(0deg, var(--code-color), var(--code-color) 1px, transparent 1px, transparent 3px);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 2px rgba(230, 255, 0, 0.4));
+}
+
+.choice-row { opacity: 0; transition: opacity 0.5s ease; }
+.choice-row.visible { opacity: 1; }
+.btn-choice {
+  color: var(--code-color); -webkit-text-fill-color: var(--code-color); cursor: pointer; padding: 0 10px; transition: all 0.2s;
+}
+.btn-choice:hover { background: var(--code-color); color: #000; -webkit-text-fill-color: #000; }
+.exit-glitch { transform: scale(0.8); opacity: 0 !important; filter: blur(15px); pointer-events: none; }
+
+.hidden-canvas-fade { opacity: 0; transition: opacity 0.6s ease; }
+
+.typewriter-text::after {
+  content: '_'; display: inline-block; margin-left: 5px; color: var(--code-color); -webkit-text-fill-color: var(--code-color); animation: blink 0.8s infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+#transition-overlay {
+  position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+  background: #000; z-index: 99999; opacity: 0; pointer-events: none;
+  transition: opacity 1.5s ease;
+}
+#transition-overlay.active { opacity: 1; pointer-events: all; }
+</style>
+</head>
+<body>
+<div id="cur"></div>
+<div id="cur-ring"></div>
+<canvas id="intro-canvas"></canvas>
+<div id="transition-overlay"></div>
+
+<video id="bg-video" muted playsinline>
+  <source src="VIDEO1.mp4" type="video/mp4">
+</video>
+
+<section id="hero">
+  <div class="hero-heading" id="main-heading">
+    <div class="ktext-line" data-text="sense"></div>
+    <div class="ktext-line" data-text="beyond"></div>
+  </div>
+  <div class="typewriter-container" id="typewriter-hook">
+    <div class="typewriter-line"><span class="typewriter-text"></span></div>
+    <div class="choice-row" id="choice-row">
+      <span class="btn-choice" onclick="handleChoice('Y')">[Y]</span> 
+      <span class="typewriter-line" style="-webkit-text-fill-color:var(--code-color); color:var(--code-color);">/</span> 
+      <span class="btn-choice" onclick="handleChoice('N')">[N]</span>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ── 1. 真實植物與化學式圖片預載 ── */
+const ASSETS = {
+  grapefruit: new Image(), rose: new Image(), pinkpepper: new Image(), cedar: new Image(),
+  benzyl_acetate: new Image(), calone: new Image()
+};
+ASSETS.grapefruit.src = 'grapefruit.png'; 
+ASSETS.rose.src = 'rose.png';
+ASSETS.pinkpepper.src = 'pinkpepper.png';
+ASSETS.cedar.src = 'cedar.png';
+ASSETS.benzyl_acetate.src = 'benzyl_acetate.png'; // 載入你的圖檔
+ASSETS.calone.src = 'calone.png'; // 載入你的圖檔
+
+document.querySelectorAll('.ktext-line').forEach(line => {
+  const text = line.dataset.text || ''; line.innerHTML = '';
+  for (const ch of text) {
+    const span = document.createElement('span');
+    span.className = ch === ' ' ? 'kspace' : 'kchar';
+    span.innerHTML = ch === ' ' ? '&nbsp;' : ch;
+    line.appendChild(span);
+  }
+});
+
+/* 完美切換為 image 模式 */
+const HIDDEN_CONTENT = [
+  { charIndex: 0,  type: 'image', content: 'grapefruit',     offsetX: 28,  offsetY: -5,   scale: 0.20 }, 
+  { charIndex: 1,  type: 'image', content: 'benzyl_acetate', offsetX: -15, offsetY: -50,  scale: 0.30 }, 
+  { charIndex: 2,  type: 'scent', content: 'dripper',        offsetX: 50,  offsetY: 45,   scale: 0.65 }, 
+  { charIndex: 3,  type: 'image', content: 'calone',         offsetX: -30, offsetY: -30,  scale: 0.35 }, 
+  { charIndex: 4,  type: 'text',  content: 'jeteux',         offsetX: 15,  offsetY: 5,    scale: 0.75, color: '#f37c03', font: 'Alkatra' }, 
+  { charIndex: 5,  type: 'image', content: 'rose',           offsetX: -30, offsetY: 40,   scale: 0.25 }, 
+  { charIndex: 6,  type: 'text',  content: 'Aqueux',         offsetX: 0,   offsetY: -55,  scale: 0.80, color: '#b1d2f2', font: 'Alkatra' }, 
+  { charIndex: 7,  type: 'image', content: 'pinkpepper',     offsetX: 10,  offsetY: 35,   scale: 0.35 }, 
+  { charIndex: 8,  type: 'image', content: 'cedar',          offsetX: -30, offsetY: 25,   scale: 0.30 }, 
+  { charIndex: 9,  type: 'text',  content: 'Métallique',     offsetX: -18, offsetY: -30,  scale: 0.4, color: 'silver', font: 'serif' }, 
+  { charIndex: 10, type: 'scent', content: 'lavender',       offsetX: 45,  offsetY: -25,  scale: 0.60 }, 
+];
+
+const ACCENT = '#F5DF4D';
+
+/* ── 2. 保留薰衣草與滴管的向量繪圖 ── */
+function drawLavender(ctx, size) {
+  const stems = [{ ox: -size*0.18, angle: -0.18, buds: 9 }, { ox:  0, angle:  0, buds: 11 }, { ox:  size*0.18, angle:  0.18, buds: 9 }];
+  stems.forEach(({ ox, angle, buds }) => {
+    ctx.save(); ctx.translate(ox, size * 0.5); ctx.rotate(angle);
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -size * 0.9);
+    ctx.strokeStyle = '#5a7a3a'; ctx.lineWidth = Math.max(1, size * 0.03); ctx.stroke();
+    const budStart = -size * 0.88; const budSpacing = (size * 0.55) / buds;
+    for (let i = 0; i < buds; i++) {
+      const by = budStart + i * budSpacing; const side = i % 2 === 0 ? 1 : -1; const budSize = size * (0.055 + (i / buds) * 0.025);
+      ctx.beginPath(); ctx.ellipse(side * budSize * 0.9, by, budSize * 0.4, budSize * 0.9, side * 0.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#7a5eaa'; ctx.globalAlpha = 0.9; ctx.fill();
+      ctx.beginPath(); ctx.ellipse(side * budSize * 0.7, by - budSize * 0.3, budSize * 0.22, budSize * 0.5, side * 0.3, 0, Math.PI * 2);
+      ctx.fillStyle = '#b89ee0'; ctx.globalAlpha = 0.7; ctx.fill();
+    }
+    ctx.globalAlpha = 1; ctx.restore();
+  });
+}
+
+function drawDripper(ctx, size) {
+  const s = size; const bw = s * 0.44, bh = s * 0.62; const bx = -bw / 2, by = s * 0.18;
+  ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, s * 0.06); ctx.fillStyle = 'rgba(160,90,20,0.55)'; ctx.fill(); ctx.strokeStyle = '#c8791a'; ctx.lineWidth = Math.max(1.2, s * 0.028); ctx.stroke();
+  const nw = s * 0.13; ctx.beginPath(); ctx.moveTo(-bw/2, by + s*0.06); ctx.lineTo(-nw/2, by - s*0.04); ctx.lineTo( nw/2, by - s*0.04); ctx.lineTo( bw/2, by + s*0.06); ctx.strokeStyle = '#c8791a'; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(bx + s*0.06, by + s*0.18, bw - s*0.12, bh * 0.38);
+  const tubH = s * 0.55; const tubW = s * 0.05; const tubTop = by - s*0.04 - tubH;
+  ctx.beginPath(); ctx.rect(-tubW/2, tubTop, tubW, tubH); ctx.fillStyle = 'rgba(200,230,255,0.22)'; ctx.fill(); ctx.strokeStyle = 'rgba(200,230,255,0.7)'; ctx.lineWidth = Math.max(0.8, s*0.018); ctx.stroke();
+  ctx.beginPath(); ctx.rect(-tubW/2 + s*0.008, by - s*0.04 - tubH*0.55, tubW - s*0.016, tubH*0.55); ctx.fillStyle = 'rgba(160,90,20,0.45)'; ctx.fill();
+  const bulbR = s * 0.13; const bulbY = tubTop - bulbR * 0.5;
+  ctx.beginPath(); ctx.ellipse(0, bulbY, bulbR, bulbR * 1.15, 0, 0, Math.PI * 2); ctx.fillStyle = '#2a2a2a'; ctx.fill(); ctx.strokeStyle = '#555'; ctx.lineWidth = Math.max(0.8, s*0.02); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(-bulbR*0.28, bulbY - bulbR*0.28, bulbR*0.22, bulbR*0.14, -0.5, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fill();
+  const dropY = by - s*0.04 + s*0.08; ctx.beginPath(); ctx.moveTo(0, dropY);
+  ctx.bezierCurveTo( s*0.08, dropY + s*0.02,  s*0.09, dropY + s*0.14, 0,       dropY + s*0.18);
+  ctx.bezierCurveTo(-s*0.09, dropY + s*0.14, -s*0.08, dropY + s*0.02, 0, dropY);
+  ctx.fillStyle = ACCENT; ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1;
+  ctx.beginPath(); ctx.ellipse(-s*0.025, dropY + s*0.06, s*0.018, s*0.03, -0.4, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fill();
+}
+
+function drawHiddenContent(mainCtx, charData, alpha) {
+  if (alpha <= 0.01 || !charData.rect || !charData.hiddenDef) return;
+  const def = charData.hiddenDef; const rect = charData.rect;
+  const W = window.innerWidth, H = window.innerHeight;
+  const contentCvs = document.createElement('canvas'); contentCvs.width = W; contentCvs.height = H;
+  const cCtx = contentCvs.getContext('2d');
+  const cx = rect.left + rect.width / 2  + def.offsetX;
+  const cy = rect.top  + rect.height / 2 + def.offsetY;
+  const size = Math.min(rect.height * 0.46, rect.width * 0.44) * def.scale;
+
+  if (def.type === 'image') {
+    const img = ASSETS[def.content];
+    if (img && img.complete && img.naturalWidth !== 0) {
+      const aspect = img.naturalWidth / img.naturalHeight;
+      const baseSize = size * 3.5; 
+      let drawW = baseSize; let drawH = baseSize / aspect;
+      if (aspect < 1) { drawH = baseSize; drawW = baseSize * aspect; }
+      if (def.content === 'cedar') {
+          const angleInRadians = -10 * Math.PI / 180;
+          cCtx.save(); cCtx.translate(cx, cy); cCtx.rotate(angleInRadians);
+          cCtx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH); 
+          cCtx.restore();
+      } else {
+          cCtx.drawImage(img, cx - drawW / 2, cy - drawH / 2, drawW, drawH);
+      }
+    }
+  } else if (def.type === 'text') {
+    const fs = Math.floor(rect.width * 0.25 * def.scale);
+    if (def.font === 'Alkatra') cCtx.font = `${fs}px 'Alkatra', cursive`;
+    else if (def.font === 'serif') cCtx.font = `italic ${fs}px 'Fraunces', serif`;
+    else cCtx.font = `${fs}px monospace`;
+    cCtx.textBaseline = 'middle'; cCtx.textAlign = 'center';
+    if (def.color === 'silver') {
+      const grad = cCtx.createLinearGradient(cx - fs, cy - fs, cx + fs, cy + fs);
+      grad.addColorStop(0, '#e0e0e0'); grad.addColorStop(0.3, '#ffffff'); grad.addColorStop(0.5, '#9e9e9e'); grad.addColorStop(0.7, '#f5f5f5'); grad.addColorStop(1, '#616161');
+      cCtx.fillStyle = grad;
+    } else {
+      cCtx.fillStyle = def.color || ACCENT;
+    }
+    cCtx.fillText(def.content, cx, cy);
+  } else {
+    cCtx.save(); cCtx.translate(cx, cy);
+    if (def.content === 'lavender') drawLavender(cCtx, size);
+    else if (def.content === 'dripper') drawDripper(cCtx, size);
+    cCtx.restore();
+  }
+  mainCtx.globalAlpha = alpha; mainCtx.drawImage(contentCvs, 0, 0); mainCtx.globalAlpha = 1;
+}
+
+/* ── 3. 動態渲染與互動引擎 ── */
+const cur = document.getElementById('cur'), ring = document.getElementById('cur-ring');
+let mx = -100, my = -100, rx = 0, ry = 0;
+document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
+
+let allChars = Array.from(document.querySelectorAll('.kchar')).map(el => ({ el, rect: null, scale: 1, hiddenDef: null }));
+let activeTarget = null, currentLightAngle = 0, lightVelocity = 0;
+let interactionEnabled = false;
+
+function updateRects() { allChars.forEach(c => { c.rect = c.el.getBoundingClientRect(); }); }
+window.addEventListener('resize', updateRects); window.addEventListener('scroll', updateRects);
+
+function startMainTick() {
+  const hCvs = document.createElement('canvas'); hCvs.id = "hidden-canvas"; 
+  hCvs.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:50;';
+  document.body.appendChild(hCvs); const hCtx = hCvs.getContext('2d');
+  interactionEnabled = true;
+
+  function tick() {
+    if (!interactionEnabled) return;
+    hCvs.width  = window.innerWidth; hCvs.height = window.innerHeight;
+    rx += (mx - rx) * 0.12; ry += (my - ry) * 0.12;
+    cur.style.left = mx + 'px'; cur.style.top = my + 'px'; ring.style.left = rx + 'px'; ring.style.top = ry + 'px';
+
+    let nearestChar = null, minDist = Infinity;
+
+    allChars.forEach(c => {
+      if (!c.rect) return;
+      const charCx = c.rect.left + c.rect.width / 2, charCy = c.rect.top  + c.rect.height / 2;
+      const distToChar = Math.sqrt((mx - charCx) ** 2 + (my - charCy) ** 2);
+      
+      let imgCx = charCx; let imgCy = charCy;
+      if (c.hiddenDef) { imgCx += c.hiddenDef.offsetX; imgCy += c.hiddenDef.offsetY; }
+      const distToImage = Math.sqrt((mx - imgCx) ** 2 + (my - imgCy) ** 2);
+
+      const targetScale = 1 + Math.max(0, 1 - distToChar / 180) * 0.45;
+      c.scale += (targetScale - c.scale) * 0.1;
+      c.el.style.transform = `scale(${c.scale.toFixed(3)})`;
+
+      if (distToChar < minDist) { minDist = distToChar; nearestChar = c; }
+      if (Math.max(0, 1 - distToImage / 90) > 0.01) drawHiddenContent(hCtx, c, Math.pow(Math.max(0, 1 - distToImage / 90), 2));
+    });
+
+    allChars.forEach(c => c.el.classList.remove('is-lit'));
+
+    if (nearestChar && minDist <80) {
+      nearestChar.el.classList.add('is-lit');
+      const r = nearestChar.rect;
+      nearestChar.el.style.setProperty('--lx', Math.max(r.left, Math.min(mx, r.right))  - r.left);
+      nearestChar.el.style.setProperty('--ly', Math.max(r.top,  Math.min(my, r.bottom)) - r.top);
+
+      const baseAngle = (Math.atan2(r.top + r.height / 2 - my, r.left + r.width  / 2 - mx) * 180 / Math.PI) + 90;
+      if (nearestChar !== activeTarget) { activeTarget = nearestChar; currentLightAngle = baseAngle + 25; lightVelocity = 0; }
+      let diff = baseAngle - currentLightAngle; while (diff >  180) diff -= 360; while (diff < -180) diff += 360;
+      lightVelocity = (lightVelocity + diff * 0.1) * 0.9; currentLightAngle += lightVelocity;
+      nearestChar.el.style.setProperty('--angle', currentLightAngle - 25);
+    } else { activeTarget = null; }
+    requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+const introCanvas = document.getElementById('intro-canvas');
+const iCtx = introCanvas.getContext('2d');
+
+function startIntro() {
+  updateRects();
+  const heroChars = allChars.filter(c => c.el.closest('#hero'));
+  heroChars.forEach((c, i) => { c.hiddenDef = HIDDEN_CONTENT.find(d => d.charIndex === i) || null; c.introLit = 0; c.introScale = 1; });
+
+  const PER = 210, DUR = 400, SCALE_PEAK = 1.32;
+  const TOTAL_ANIM_TIME = heroChars.length * PER + DUR + 300;
+  let ts0 = null;
+
+  function introTick(ts) {
+    if (!ts0) ts0 = ts; const elapsed = ts - ts0;
+    iCtx.clearRect(0, 0, introCanvas.width, introCanvas.height);
+
+    heroChars.forEach((c, i) => {
+      const t = elapsed - i * PER; let targetLit = 0, targetScale = 1;
+      if (t >= 0 && t < DUR) {
+        const p = t / DUR; const pingA = p < 0.35 ? p / 0.35 : 1 - (p - 0.35) / 0.65;
+        targetLit = 1; targetScale = 1 + (SCALE_PEAK - 1) * Math.sin(p * Math.PI);
+
+        if (c.rect) {
+          const cx = c.rect.left + c.rect.width / 2, cy = c.rect.top  + c.rect.height / 2, r = c.rect.width * 1.05;
+          const grad = iCtx.createRadialGradient(cx, cy, 0, cx, cy, r);
+          grad.addColorStop(0,   `rgba(245,223,77,${pingA * 0.52})`); grad.addColorStop(0.45,`rgba(245,223,77,${pingA * 0.18})`); grad.addColorStop(1,   'rgba(245,223,77,0)');
+          iCtx.fillStyle = grad; iCtx.beginPath(); iCtx.arc(cx, cy, r, 0, Math.PI * 2); iCtx.fill();
+        }
+      } else if (t >= DUR) { targetLit = 1; targetScale = 1; }
+
+      c.introLit += (targetLit - c.introLit) * 0.18; c.introScale += (targetScale - c.introScale) * 0.16;
+      c.el.style.opacity = c.introLit.toFixed(3); c.el.style.transform = `scale(${c.introScale.toFixed(3)})`;
+    });
+
+    if (elapsed < TOTAL_ANIM_TIME) requestAnimationFrame(introTick);
+    else {
+      heroChars.forEach(c => { c.el.style.transform = ''; });
+      iCtx.clearRect(0, 0, introCanvas.width, introCanvas.height);
+      introCanvas.style.display = 'none';
+      startTypewriter();
+    }
+  }
+  requestAnimationFrame(introTick);
+}
+
+function startTypewriter() {
+  const container = document.getElementById('typewriter-hook');
+  const textSpan = container.querySelector('.typewriter-text');
+  const msg = "Ready to explore?"; let charIndex = 0;
+  container.classList.add('show');
+  
+  const timer = setInterval(() => {
+    if (charIndex < msg.length) { textSpan.textContent += msg.charAt(charIndex); charIndex++; } 
+    else {
+      clearInterval(timer);
+      setTimeout(() => { document.getElementById('choice-row').classList.add('visible'); startMainTick(); }, 1000);
+    }
+  }, 100);
+}
+
+function proceedToNextPart() {
+  document.removeEventListener('dblclick', proceedToNextPart);
+  document.getElementById('transition-overlay').classList.add('active');
+  setTimeout(() => { console.log("導向下一 PART..."); }, 1500);
+}
+
+function handleChoice(val) {
+  if (val === 'Y') {
+    interactionEnabled = false; 
+    const hiddenCvs = document.getElementById('hidden-canvas');
+    if (hiddenCvs) { hiddenCvs.classList.add('hidden-canvas-fade'); setTimeout(() => hiddenCvs.remove(), 600); }
+
+    document.getElementById('main-heading').classList.add('exit-glitch');
+    document.getElementById('typewriter-hook').classList.add('exit-glitch');
+    document.getElementById('hero').classList.add('transparent-bg');
+    
+    const video = document.getElementById('bg-video'); video.style.opacity = "1"; video.play();
+    document.getElementById('cur').style.opacity = 0; document.getElementById('cur-ring').style.opacity = 0;
+
+    document.addEventListener('dblclick', proceedToNextPart);
+  }
+}
+
+document.fonts.ready.then(() => {
+  introCanvas.width  = window.innerWidth; introCanvas.height = window.innerHeight;
+  requestAnimationFrame(() => { updateRects(); setTimeout(startIntro, 300); });
+});
+</script>
+</body>
+</html>
